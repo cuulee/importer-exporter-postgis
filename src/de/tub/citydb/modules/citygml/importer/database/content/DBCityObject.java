@@ -34,6 +34,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 import org.citygml4j.impl.citygml.core.ExternalObjectImpl;
@@ -51,6 +52,8 @@ import org.postgis.PGgeometry;
 
 import de.tub.citydb.config.Config;
 import de.tub.citydb.config.internal.Internal;
+import de.tub.citydb.config.project.importer.CreationDateMode;
+import de.tub.citydb.config.project.importer.TerminationDateMode;
 import de.tub.citydb.database.DatabaseConnectionPool;
 import de.tub.citydb.database.TableEnum;
 import de.tub.citydb.log.Logger;
@@ -80,6 +83,8 @@ public class DBCityObject implements DBImporter {
 	private boolean rememberGmlId;
 	private boolean importAppearance;
 	private boolean affineTransformation;
+	private CreationDateMode creationDateMode;
+	private TerminationDateMode terminationDateMode;
 	private int batchCounter;
 
 	public DBCityObject(Connection batchConn, Config config, DBImporterManager dbImporterManager) throws SQLException {
@@ -123,13 +128,16 @@ public class DBCityObject implements DBImporter {
 		else
 			updatingPerson = null;
 
+		creationDateMode = config.getProject().getImporter().getContinuation().getCreationDateMode();
+		terminationDateMode = config.getProject().getImporter().getContinuation().getTerminationDateMode();
+
 		if (gmlIdCodespace != null && gmlIdCodespace.length() != 0)
 			gmlIdCodespace = "'" + gmlIdCodespace + "'";
 		else
 			gmlIdCodespace = "null";
 
 		psCityObject = batchConn.prepareStatement("insert into CITYOBJECT (ID, CLASS_ID, GMLID, GMLID_CODESPACE, ENVELOPE, CREATION_DATE, TERMINATION_DATE, LAST_MODIFICATION_DATE, UPDATING_PERSON, REASON_FOR_UPDATE, LINEAGE, XML_SOURCE) values " +
-				"(?, ?, ?, " + gmlIdCodespace + ", ?, now(), null, now(), " + updatingPerson + ", " + reasonForUpdate + ", " + lineage + ", null)");
+				"(?, ?, ?, " + gmlIdCodespace + ", ?, ?, ?, SYSDATE, " + updatingPerson + ", " + reasonForUpdate + ", " + lineage + ", null)");
 
 		genericAttributeImporter = (DBCityObjectGenericAttrib)dbImporterManager.getDBImporter(DBImporterEnum.CITYOBJECT_GENERICATTRIB);
 		externalReferenceImporter = (DBExternalReference)dbImporterManager.getDBImporter(DBImporterEnum.EXTERNAL_REFERENCE);
@@ -140,7 +148,7 @@ public class DBCityObject implements DBImporter {
 	public long insert(AbstractCityObject cityObject, long cityObjectId) throws SQLException {
 		return insert(cityObject, cityObjectId, false);
 	}
-	
+
 	public long insert(AbstractCityObject cityObject, long cityObjectId, boolean isTopLevelFeature) throws SQLException {
 		// ID
 		psCityObject.setLong(1, cityObjectId);
@@ -158,7 +166,7 @@ public class DBCityObject implements DBImporter {
 			if (cityObject.isSetId()) {
 				dbImporterManager.putGmlId(cityObject.getId(), cityObjectId, -1, false, gmlId, cityObject.getCityGMLClass());
 
-				if (rememberGmlId) {	
+				if (rememberGmlId) {
 					ExternalReference externalReference = new ExternalReferenceImpl();
 					externalReference.setInformationSystem(importFileName);
 
@@ -212,25 +220,57 @@ public class DBCityObject implements DBImporter {
 
 			StringBuilder geomEWKT = new StringBuilder("");
 			String coordComma = "";
-			
+
 			geomEWKT.append("SRID=").append(dbSrid).append(";POLYGON((");
-			
+
 			for (int i=0; i<points.size(); i+=3){
 				geomEWKT.append(coordComma)
-						.append(points.get(i)).append(" ")
-						.append(points.get(i+1)).append(" ")
-						.append(points.get(i+2));
-				
+				.append(points.get(i)).append(" ")
+				.append(points.get(i+1)).append(" ")
+				.append(points.get(i+2));
+
 				coordComma = ",";
 			}				
 
 			geomEWKT.append("))");
-			
+
 			PGgeometry pgBoundedBy = new PGgeometry(PGgeometry.geomFromString(geomEWKT.toString()));
 
 			psCityObject.setObject(4, pgBoundedBy);
 		} else {
 			psCityObject.setNull(4, Types.OTHER, "ST_GEOMETRY");
+		}
+
+		// creationDate (null is not allowed)
+		java.util.Date dateCre = null;
+		if ((CreationDateMode.INHERIT == creationDateMode) ||
+				(CreationDateMode.COMPLEMENT == creationDateMode)) {
+			GregorianCalendar gc = Util.getCreationDate(cityObject, (CreationDateMode.INHERIT == creationDateMode));
+			if (null != gc) {
+				// get creationDate from cityObject (or parents)
+				dateCre = gc.getTime();
+			}
+		}
+		if (null == dateCre) {
+			// creationDate is not set: use current date
+			dateCre = new java.util.Date();
+		}
+		psCityObject.setDate(5, new java.sql.Date(dateCre.getTime()));
+
+		// terminationDate (null is allowed)
+		java.util.Date dateTrm = null;
+		if ((TerminationDateMode.INHERIT == terminationDateMode) ||
+				(TerminationDateMode.COMPLEMENT == terminationDateMode)) {
+			GregorianCalendar gc = Util.getTerminationDate(cityObject, (TerminationDateMode.INHERIT == terminationDateMode));
+			if (null != gc) {
+				// get terminationDate from cityObject (or parents)
+				dateTrm = gc.getTime();
+			}
+		}
+		if (null == dateTrm) {
+			psCityObject.setNull(6, Types.DATE);
+		} else {
+			psCityObject.setDate(6, new java.sql.Date(dateTrm.getTime()));
 		}
 
 		// resolve local xlinks to geometry objects
@@ -284,7 +324,7 @@ public class DBCityObject implements DBImporter {
 								TableEnum.CITYOBJECT,
 								href,
 								TableEnum.CITYOBJECT
-						));
+								));
 					}
 				}
 			}
