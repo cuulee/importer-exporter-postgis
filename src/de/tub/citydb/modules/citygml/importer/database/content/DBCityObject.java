@@ -137,7 +137,7 @@ public class DBCityObject implements DBImporter {
 			gmlIdCodespace = "null";
 
 		psCityObject = batchConn.prepareStatement("insert into CITYOBJECT (ID, CLASS_ID, GMLID, GMLID_CODESPACE, ENVELOPE, CREATION_DATE, TERMINATION_DATE, LAST_MODIFICATION_DATE, UPDATING_PERSON, REASON_FOR_UPDATE, LINEAGE, XML_SOURCE) values " +
-				"(?, ?, ?, " + gmlIdCodespace + ", ?, ?, ?, SYSDATE, " + updatingPerson + ", " + reasonForUpdate + ", " + lineage + ", null)");
+				"(?, ?, ?, " + gmlIdCodespace + ", ?, ?, ?, now(), " + updatingPerson + ", " + reasonForUpdate + ", " + lineage + ", null)");
 
 		genericAttributeImporter = (DBCityObjectGenericAttrib)dbImporterManager.getDBImporter(DBImporterEnum.CITYOBJECT_GENERICATTRIB);
 		externalReferenceImporter = (DBExternalReference)dbImporterManager.getDBImporter(DBImporterEnum.EXTERNAL_REFERENCE);
