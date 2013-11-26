@@ -331,8 +331,6 @@ public class KmlSplitter {
 						query.setString(2, lineGeom);
 						query.setLong(3, id);
 						query.setString(4, polyGeom);
-						
-						rs = query.executeQuery();
 					}
 					else {
 						query = connection.prepareStatement(Queries.CITYOBJECTGROUP_MEMBERS);
