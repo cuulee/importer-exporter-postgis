@@ -1583,6 +1583,7 @@ public abstract class KmlGenericObject {
 							}
 						}
 					}
+					break;
 				case Geometry.POINT:
 				case Geometry.LINESTRING:
 				case Geometry.MULTIPOINT:
@@ -1727,6 +1728,7 @@ public abstract class KmlGenericObject {
 							}
 						}
 					}
+					break;
 				case Geometry.POINT:
 				case Geometry.LINESTRING:
 				case Geometry.MULTIPOINT:
