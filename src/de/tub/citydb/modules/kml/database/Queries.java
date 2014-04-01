@@ -333,7 +333,7 @@ public class Queries {
 				"AND b.lod1_geometry_id IS NOT NULL";
 
 		private static final String COLLADA_GEOMETRY_AND_APPEARANCE_FROM_ROOT_ID_0 =
-			"SELECT sg.geometry, sg.id, sg.parent_id, sd.type, " +
+			"SELECT sg.geometry, sg.id, sg.parent_id, sg.root_id, sd.type, " +
 					"sd.x3d_shininess, sd.x3d_transparency, sd.x3d_ambient_intensity, sd.x3d_specular_color, sd.x3d_diffuse_color, sd.x3d_emissive_color, sd.x3d_is_smooth, " +
 					"sd.tex_image_uri, tp.surface_data_id, tp.texture_coordinates, a.theme " +
 				"FROM SURFACE_GEOMETRY sg " +
@@ -342,8 +342,8 @@ public class Queries {
 				"LEFT JOIN APPEAR_TO_SURFACE_DATA a2sd ON a2sd.surface_data_id = sd.id " +
 				"LEFT JOIN APPEARANCE a ON a2sd.appearance_id = a.id " +
 			"WHERE " +
-				"sg.root_id = ? "; // +
-//				"AND (a.theme = ? OR a.theme IS NULL) " +
+				"sg.root_id = ? ";
+//				"AND (a.theme = ? OR a.theme IS NULL)";
 //				"ORDER BY sg.parent_id ASC"; // own root surfaces first
 
 		public static final String[] COLLADA_GEOMETRY_AND_APPEARANCE_FROM_ROOT_ID = new String[] {
