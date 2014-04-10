@@ -545,10 +545,12 @@ public class GenericCityObject extends KmlGenericObject{
 											}
 											
 											BufferedImage bufferedImage = null;
-											try {
-												bufferedImage = ImageIO.read(new ByteArrayInputStream(texImage));
+											if (texImage != null) {
+												try {
+													bufferedImage = ImageIO.read(new ByteArrayInputStream(texImage));
+												}
+												catch (IOException ioe) {}
 											}
-											catch (IOException ioe) {}
 	
 											if (bufferedImage != null) { // image in JPEG, PNG or another usual format
 												addTexImage(texImageUri, bufferedImage);
