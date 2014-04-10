@@ -33,7 +33,6 @@ import java.awt.image.BufferedImage;
 // import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -70,6 +69,7 @@ import org.postgis.Polygon;
 //import org.postgresql.largeobject.LargeObjectManager;
 
 import com.sun.j3d.utils.geometry.GeometryInfo;
+import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
 
 import de.tub.citydb.api.event.EventDispatcher;
 import de.tub.citydb.config.Config;
@@ -504,7 +504,7 @@ public class CityFurniture extends KmlGenericObject{
 	
 						String texImageUri = null;
 //						OrdImage texImage = null;
-						InputStream texImage = null;
+						byte[] texImage = null;
 //						byte buf[] = null;
 						StringTokenizer texCoordsTokenized = null;
 	
@@ -528,8 +528,8 @@ public class CityFurniture extends KmlGenericObject{
 								texImageUri = ".." + File.separator + "_" + texImageUri.substring(fileSeparatorIndex + 1);
 	
 								addTexImageUri(surfaceId, texImageUri);
-//								if (getTexOrdImage(texImageUri) == null) { // not already marked as wrapping texture
-								if (getTexImage(texImageUri) == null) { // not already read in
+								if ((getUnsupportedImage(texImageUri) == null) && (getTexImage(texImageUri) == null)) {
+									// not already marked as wrapping texture && not already read in
 									PreparedStatement psQuery3 = null;
 									ResultSet rs3 = null;
 									try {
@@ -537,24 +537,21 @@ public class CityFurniture extends KmlGenericObject{
 										psQuery3.setLong(1, rs2.getLong("surface_data_id"));
 										rs3 = psQuery3.executeQuery();
 										while (rs3.next()) {
-/*
-											// read large object (OID) data type from database
-											// Get the Large Object Manager to perform operations with
-											LargeObjectManager lobj = ((org.postgresql.PGConnection)connection).getLargeObjectAPI();
-
-											// Open the large object for reading
-											long oid = rs3.getLong("tex_image");
-											if (oid == 0) {
-												Logger.getInstance().error("Database error while reading library object: " + texImageUri);
-											}
-											LargeObject obj = lobj.open(oid, LargeObjectManager.READ);
-
-											// Read the data
-											buf = new byte[obj.size()];
-											obj.read(buf, 0, obj.size());
-*/
 											// read bytea data type from database
-											texImage = rs3.getBinaryStream("tex_image");
+											texImage = rs3.getBytes("tex_image");
+										}
+										
+										BufferedImage bufferedImage = null;
+										try {
+											bufferedImage = ImageIO.read(new ByteInputStream(texImage, texImage.length));
+										}
+										catch (IOException ioe) {}
+
+										if (bufferedImage != null) { // image in JPEG, PNG or another usual format
+											addTexImage(texImageUri, bufferedImage);
+										}
+										else {
+											addUnsupportedImage(texImageUri, texImage);
 										}
 									}
 									finally {
@@ -563,22 +560,6 @@ public class CityFurniture extends KmlGenericObject{
 										if (psQuery3 != null)
 											try { psQuery3.close(); } catch (SQLException e) {}
 									}
-
-									BufferedImage bufferedImage = null;
-									try {
-//										texImage = new ByteArrayInputStream(buf); // for Large Objects
-										
-//										bufferedImage = ImageIO.read(texImage.getDataInStream());
-										bufferedImage = ImageIO.read(texImage);
-									}
-									catch (IOException ioe) {}
-
-									if (bufferedImage != null) { // image in JPEG, PNG or another usual format
-										addTexImage(texImageUri, bufferedImage);
-									}
-//									else {
-//										addTexOrdImage(texImageUri, texImage);
-//									}
 
 									texImageCounter++;
 									if (texImageCounter > 20) {
@@ -647,16 +628,11 @@ public class CityFurniture extends KmlGenericObject{
 								if (texCoordsTokenized != null) {
 									double s = Double.parseDouble(texCoordsTokenized.nextToken());
 									double t = Double.parseDouble(texCoordsTokenized.nextToken());
-/*									if (s > 1.1 || s < -0.1 || t < -0.1 || t > 1.1) { // texture wrapping -- it conflicts with texture atlas
+									if (s > 1.1 || s < -0.1 || t < -0.1 || t > 1.1) { // texture wrapping -- it conflicts with texture atlas
 										removeTexImage(texImageUri);
-										BufferedImage bufferedImage = null;
-										try {
-											bufferedImage = ImageIO.read(texImage);
-										} catch (IOException e) {}
-										addTexImage(texImageUri, bufferedImage);
-//										addTexOrdImage(texImageUri, texImage);
+										addUnsupportedImage(texImageUri, texImage);
 									}
-*/
+									
 									texCoordsForThisSurface = new TexCoords(s, t);
 								}
 								setVertexInfoForXYZ(surfaceId,

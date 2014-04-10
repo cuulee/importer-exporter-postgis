@@ -37,7 +37,6 @@ import java.awt.image.BufferedImage;
 // import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -130,6 +129,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import com.sun.j3d.utils.geometry.GeometryInfo;
+import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
 
 import de.tub.citydb.api.database.DatabaseSrs;
 import de.tub.citydb.api.event.EventDispatcher;
@@ -174,7 +174,7 @@ public abstract class KmlGenericObject {
 	private HashMap<String, BufferedImage> texImages = new HashMap<String, BufferedImage>();
 	// for images in unusual formats or wrapping textures. Most times it will be null.
 	// key is imageUri
-//	private HashMap<String, OrdImage> texOrdImages = null;
+	private HashMap<String, byte[]> unsupportedImages = null;
 	// key is surfaceId, surfaceId is originally a Long
 	private HashMap<Long, X3DMaterial> x3dMaterials = null;
 	
@@ -830,40 +830,35 @@ public abstract class KmlGenericObject {
 		return texImages;
 	}
 
-	protected BufferedImage getTexImage(String texImageUri){
+	public BufferedImage getTexImage(String texImageUri){
 		BufferedImage texImage = null;
 		if (texImages != null) {
 			texImage = texImages.get(texImageUri);
 		}
 		return texImage;
 	}
-	
-	/*
-	private void removeTexImage(String texImageUri){
-		texImages.remove(texImageUri);
-	}
 
-	public void addTexOrdImage(String texImageUri, OrdImage texOrdImage){
-		if (texOrdImage == null) {
+	public void addUnsupportedImage(String texImageUri, byte[] unsupportedImage){
+		if (unsupportedImage == null) {
 			return;
 		}
-		if (texOrdImages == null) {
-			texOrdImages = new HashMap<String, OrdImage>();
+		if (unsupportedImages == null) {
+			unsupportedImages = new HashMap<String, byte[]>();
 		}
-		texOrdImages.put(texImageUri, texOrdImage);
+		unsupportedImages.put(texImageUri, unsupportedImage);
 	}
 
-	public HashMap<String, OrdImage> getTexOrdImages(){
-		return texOrdImages;
+	public HashMap<String, byte[]> getUnsupportedImages(){
+		return unsupportedImages;
 	}
 
-	public OrdImage getTexOrdImage(String texImageUri){
-		OrdImage texOrdImage = null;
-		if (texOrdImages != null) {
-			texOrdImage = texOrdImages.get(texImageUri);
+	public byte[] getUnsupportedImage(String texImageUri){
+		byte[] unsupportedImage = null;
+		if (unsupportedImages != null) {
+			unsupportedImage = unsupportedImages.get(texImageUri);
 		}
-		return texOrdImage;
-	}*/
+		return unsupportedImage;
+	}
 	
 	public void setVertexInfoForXYZ(long surfaceId, double x, double y, double z, TexCoords texCoordsForThisSurface){
 		vertexIdCounter = vertexIdCounter.add(BigInteger.ONE);
@@ -1039,7 +1034,7 @@ public abstract class KmlGenericObject {
 			String imageUri = objectToAppend.texImageUris.get(surfaceId);
 			this.addTexImageUri(surfaceId, imageUri);
 			this.addTexImage(imageUri, objectToAppend.getTexImage(imageUri));
-//			this.addTexOrdImage(imageUri, objectToAppend.getTexOrdImage(imageUri));
+			this.addUnsupportedImage(imageUri, objectToAppend.getUnsupportedImage(imageUri));
 			this.addGeometryInfo(surfaceId, objectToAppend.geometryInfos.get(surfaceId));
 		}
 		
@@ -1972,7 +1967,7 @@ public abstract class KmlGenericObject {
 	
 						String texImageUri = null;
 //						OrdImage texImage = null;
-						InputStream texImage = null;
+						byte[] texImage = null;
 //						byte buf[] = null;
 						StringTokenizer texCoordsTokenized = null;
 	
@@ -2000,8 +1995,8 @@ public abstract class KmlGenericObject {
 									texImageUri = "_" + texImageUri.substring(fileSeparatorIndex + 1);
 	
 									addTexImageUri(surfaceId, texImageUri);
-//									if (getTexOrdImage(texImageUri) == null) { // not already marked as wrapping texture
-									if (getTexImage(texImageUri) == null) { // not already read in
+									if ((getUnsupportedImage(texImageUri) == null) && (getTexImage(texImageUri) == null)) {
+										// not already marked as wrapping texture && not already read in
 										PreparedStatement psQuery3 = null;
 										ResultSet rs3 = null;
 										try {
@@ -2009,24 +2004,21 @@ public abstract class KmlGenericObject {
 											psQuery3.setLong(1, rs2.getLong("surface_data_id"));
 											rs3 = psQuery3.executeQuery();
 											while (rs3.next()) {
-/*
-												// read large object (OID) data type from database
-												// Get the Large Object Manager to perform operations with
-												LargeObjectManager lobj = ((org.postgresql.PGConnection)connection).getLargeObjectAPI();
-	
-												// Open the large object for reading
-												long oid = rs3.getLong("tex_image");
-												if (oid == 0) {
-													Logger.getInstance().error("Database error while reading library object: " + texImageUri);
-												}
-												LargeObject obj = lobj.open(oid, LargeObjectManager.READ);
-	
-												// Read the data
-												buf = new byte[obj.size()];
-												obj.read(buf, 0, obj.size());
-*/
 												// read bytea data type from database
-												texImage = rs3.getBinaryStream("tex_image");
+												texImage = rs3.getBytes("tex_image");
+											}
+											
+											BufferedImage bufferedImage = null;
+											try {
+												bufferedImage = ImageIO.read(new ByteInputStream(texImage, texImage.length));
+											}
+											catch (IOException ioe) {}
+
+											if (bufferedImage != null) { // image in JPEG, PNG or another usual format
+												addTexImage(texImageUri, bufferedImage);
+											}
+											else {
+												addUnsupportedImage(texImageUri, texImage);
 											}
 										}
 										finally {
@@ -2035,22 +2027,6 @@ public abstract class KmlGenericObject {
 											if (psQuery3 != null)
 												try { psQuery3.close(); } catch (SQLException e) {}
 										}
-
-										BufferedImage bufferedImage = null;
-										try {
-//											texImage = new ByteArrayInputStream(buf); // for Large Objects
-										
-//											bufferedImage = ImageIO.read(texImage.getDataInStream());
-											bufferedImage = ImageIO.read(texImage);
-										}
-										catch (IOException ioe) {}
-
-										if (bufferedImage != null) { // image in JPEG, PNG or another usual format
-											addTexImage(texImageUri, bufferedImage);
-										}
-//										else {
-//											addTexOrdImage(texImageUri, texImage);
-//										}
 
 										texImageCounter++;
 										if (texImageCounter > 20) {
@@ -2108,17 +2084,11 @@ public abstract class KmlGenericObject {
 									if (texCoordsTokenized != null && texCoordsTokenized.hasMoreTokens()) {
 										double s = Double.parseDouble(texCoordsTokenized.nextToken());
 										double t = Double.parseDouble(texCoordsTokenized.nextToken());
-
-/*										if (s > 1.1 || s < -0.1 || t < -0.1 || t > 1.1) { // texture wrapping -- it conflicts with texture atlas
+										if (s > 1.1 || s < -0.1 || t < -0.1 || t > 1.1) { // texture wrapping -- it conflicts with texture atlas
 											removeTexImage(texImageUri);
-											BufferedImage bufferedImage = null;
-											try {
-												bufferedImage = ImageIO.read(texImage);
-											} catch (IOException e) {}
-											addTexImage(texImageUri, bufferedImage);
-//											addTexOrdImage(texImageUri, texImage);
+											addUnsupportedImage(texImageUri, texImage);
 										}
-*/
+
 										texCoordsForThisSurface = new TexCoords(s, t);
 									}
 									setVertexInfoForXYZ(surfaceId,

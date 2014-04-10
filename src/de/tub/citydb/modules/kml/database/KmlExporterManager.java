@@ -40,6 +40,7 @@ import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -60,6 +61,7 @@ import net.opengis.kml._2.PlacemarkType;
 import net.opengis.kml._2.RegionType;
 import net.opengis.kml._2.ViewRefreshModeEnumType;
 //import oracle.ord.im.OrdImage;
+
 
 import org.citygml4j.util.xml.SAXEventBuffer;
 
@@ -480,27 +482,22 @@ public class KmlExporterManager {
 	        zipOut.closeEntry();
 
 				// ----------------- image saving -----------------
-/*
-			if (colladaBundle.getTexOrdImages() != null) {
-				Set<String> keySet = colladaBundle.getTexOrdImages().keySet();
-				Iterator<String> iterator = keySet.iterator();
-				while (iterator.hasNext()) {
-					String imageFilename = iterator.next();
-					OrdImage texOrdImage = colladaBundle.getTexOrdImages().get(imageFilename);
-//					byte[] ordImageBytes = texOrdImage.getDataInByteArray();
-					byte[] ordImageBytes = texOrdImage.getBlobContent().getBytes(1, (int)texOrdImage.getBlobContent().length());
-
+			if (colladaBundle.getUnsupportedImages() != null) {
+				for (Entry<String, byte[]> entry : colladaBundle.getUnsupportedImages().entrySet()) {
+					String imageFilename = entry.getKey();
+					byte[] imageBytes = entry.getValue();
+					
 //					zipEntry = new ZipEntry(imageFilename);
 					zipEntry = imageFilename.startsWith("..") ?
 							   new ZipEntry(imageFilename.substring(3)): // skip .. and File.separator
 							   new ZipEntry(colladaBundle.getGmlId() + "/" + imageFilename);
 					zipOut.putNextEntry(zipEntry);
-					zipOut.write(ordImageBytes, 0, ordImageBytes.length);
+					zipOut.write(imageBytes, 0, imageBytes.length);
 //					zipOut.write(ordImageBytes, 0, bytes_read);
 					zipOut.closeEntry();
 				}
 			}
-*/
+
 	        if (colladaBundle.getTexImages() != null) {
 	        	Set<String> keySet = colladaBundle.getTexImages().keySet();
 	        	Iterator<String> iterator = keySet.iterator();
@@ -555,25 +552,23 @@ public class KmlExporterManager {
 	        fos.close();
 
 			// ----------------- image saving -----------------
-/*
+
 			// first those wrapped textures or images in unknown formats (like .rgb)
-			if (colladaBundle.getTexOrdImages() != null) {
-				Set<String> keySet = colladaBundle.getTexOrdImages().keySet();
-				Iterator<String> iterator = keySet.iterator();
-				while (iterator.hasNext()) {
-					String imageFilename = iterator.next();
-					OrdImage texOrdImage = colladaBundle.getTexOrdImages().get(imageFilename);
-					if (texOrdImage.getContentLength() < 1) continue;
+			if (colladaBundle.getUnsupportedImages() != null) {
+				for (Entry<String, byte[]> entry : colladaBundle.getUnsupportedImages().entrySet()) {
+					String imageFilename = entry.getKey();
+					byte[] imageBytes = entry.getValue();
+					
 					try {
-						texOrdImage.getDataInFile(buildingDirectory + File.separator + imageFilename);
-					}
-					catch (IOException ioEx) {}
-					finally {
-						texOrdImage.close();
+						FileOutputStream out = new FileOutputStream(buildingDirectory + File.separator + imageFilename);
+						out.write(imageBytes);
+						out.close();
+					} catch (IOException e) {
+						
 					}
 				}
 			}
-*/
+
 			if (colladaBundle.getTexImages() != null) {
 				Set<String> keySet = colladaBundle.getTexImages().keySet();
 				Iterator<String> iterator = keySet.iterator();
