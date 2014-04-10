@@ -30,6 +30,7 @@
 package de.tub.citydb.modules.kml.database;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 // import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -69,7 +70,6 @@ import org.postgis.Polygon;
 //import org.postgresql.largeobject.LargeObjectManager;
 
 import com.sun.j3d.utils.geometry.GeometryInfo;
-import com.sun.xml.internal.messaging.saaj.util.ByteInputStream;
 
 import de.tub.citydb.api.event.EventDispatcher;
 import de.tub.citydb.config.Config;
@@ -543,7 +543,7 @@ public class SolitaryVegetationObject extends KmlGenericObject{
 										
 										BufferedImage bufferedImage = null;
 										try {
-											bufferedImage = ImageIO.read(new ByteInputStream(texImage, texImage.length));
+											bufferedImage = ImageIO.read(new ByteArrayInputStream(texImage));
 										}
 										catch (IOException ioe) {}
 
