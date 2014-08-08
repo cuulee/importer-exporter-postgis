@@ -60,6 +60,7 @@ import net.opengis.kml._2.PolygonType;
 //import oracle.spatial.geometry.JGeometry;
 //import oracle.sql.STRUCT;
 
+
 import org.citygml4j.factory.CityGMLFactory;
 import org.citygml4j.geometry.Matrix;
 import org.citygml4j.model.citygml.appearance.X3DMaterial;
@@ -68,6 +69,7 @@ import org.postgis.PGgeometry;
 import org.postgis.Polygon;
 //import org.postgresql.largeobject.LargeObject;
 //import org.postgresql.largeobject.LargeObjectManager;
+
 
 import com.sun.j3d.utils.geometry.GeometryInfo;
 
@@ -282,11 +284,12 @@ public class GenericCityObject extends KmlGenericObject{
 					}
 					break;
 				case DisplayForm.COLLADA:
+					String currentgmlId = getGmlId();
 					setGmlId(work.getGmlId()); // must be set before fillGenericObjectForCollada
 					setId(work.getId());	   // due to implicit geometries randomized with gmlId.hashCode()
 					fillGenericObjectForCollada(rs);
 
-					if (getGeometryAmount() > GEOMETRY_AMOUNT_WARNING) {
+					if (currentgmlId != work.getGmlId() && getGeometryAmount() > GEOMETRY_AMOUNT_WARNING) {
 						Logger.getInstance().info("Object " + work.getGmlId() + " has more than " + GEOMETRY_AMOUNT_WARNING + " geometries. This may take a while to process...");
 					}
 
