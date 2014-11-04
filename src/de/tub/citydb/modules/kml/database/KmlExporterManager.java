@@ -191,7 +191,7 @@ public class KmlExporterManager {
 	       							if (!balloonsDirectory.exists()) {
 	       								balloonsDirectory.mkdir();
 	       							}
-	       							File htmlFile = new File(balloonsDirectory, placemark.getName() + '-' + work.getId() + ".html");
+	       							File htmlFile = new File(balloonsDirectory, work.getGmlId() + '-' + work.getId() + ".html");
 	       							FileOutputStream outputStream = new FileOutputStream(htmlFile);
 	       							outputStream.write(placemarkDescription.getBytes(CHARSET));
 	       							outputStream.close();
@@ -588,7 +588,7 @@ public class KmlExporterManager {
 					if (!balloonsDirectory.exists()) {
 						balloonsDirectory.mkdir();
 					}
-					File htmlFile = new File(balloonsDirectory, placemark.getName() + '-' + colladaBundle.getId() + ".html");
+					File htmlFile = new File(balloonsDirectory, colladaBundle.getGmlId() + '-' + colladaBundle.getId() + ".html");
 					FileOutputStream outputStream = new FileOutputStream(htmlFile);
 					outputStream.write(colladaBundle.getExternalBalloonFileContent().getBytes(CHARSET));
 					outputStream.close();
