@@ -35,6 +35,7 @@ import java.awt.RenderingHints;
 import java.awt.Transparency;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 // import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -2093,8 +2094,24 @@ public abstract class KmlGenericObject {
 									double s = Double.parseDouble(texCoordsTokenized.nextToken());
 									double t = Double.parseDouble(texCoordsTokenized.nextToken());
 									if (s > 1.1 || s < -0.1 || t < -0.1 || t > 1.1) { // texture wrapping -- it conflicts with texture atlas
-										removeTexImage(texImageUri);
-										addUnsupportedImage(texImageUri, texImage);
+
+										if (getTexImage(texImageUri) != null) {
+											if (texImage == null) {
+												try {
+													BufferedImage image = getTexImage(texImageUri);
+													ByteArrayOutputStream bos = new ByteArrayOutputStream();
+													String imageType = texImageUri.substring(texImageUri.lastIndexOf('.') + 1);
+													ImageIO.write(image, imageType, bos);
+													texImage = bos.toByteArray();
+												} catch (IOException e) {
+													//
+												}
+
+											}
+
+											removeTexImage(texImageUri);
+											addUnsupportedImage(texImageUri, texImage);
+										}
 									}
 
 									texCoordsForThisSurface = new TexCoords(s, t);
