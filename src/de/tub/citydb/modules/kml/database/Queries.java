@@ -246,7 +246,7 @@ public class Queries {
 			"UNION " + 
 			"SELECT lod4_geometry_id FROM BUILDING " +
 			"WHERE " +
-				"id = ? " +
+				"id = ? AND lod4_geometry_id IS NOT NULL " +
 				"AND id NOT IN " +
 				"(SELECT building_id FROM THEMATIC_SURFACE " +
 					"WHERE building_id = ? " +
@@ -294,7 +294,7 @@ public class Queries {
 			"UNION " + 
 			"SELECT lod3_geometry_id FROM BUILDING " +
 			"WHERE " +
-				"id = ? " +
+				"id = ? AND lod3_geometry_id IS NOT NULL " +
 				"AND id NOT IN " +
 				"(SELECT building_id FROM THEMATIC_SURFACE " +
 					"WHERE building_id = ? " +
@@ -324,7 +324,7 @@ public class Queries {
 			"UNION " + 
 			"SELECT lod2_geometry_id FROM BUILDING " +
 			"WHERE " +
-				"id = ? " +
+				"id = ? AND lod2_geometry_id IS NOT NULL " +
 				"AND id NOT IN " +
 				"(SELECT building_id FROM THEMATIC_SURFACE " +
 					"WHERE building_id = ? " +
